@@ -3,18 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>方图工坊 · 加边框生成器</title>
+<title>框框地加 · 图片边框生成器</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&family=DM+Mono:wght@400;500&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
 <style>
   :root {
     --ink: #1a1410;
-    --paper: #f5f0e8;
-    --warm: #e8dcc8;
+    --paper: #ffffff;
+    --warm: #f5f5f5;
     --accent: #c8502a;
     --accent2: #4a7c59;
     --muted: #8a7e6e;
-    --border: #d4c9b0;
+    --border: #e0e0e0;
     --white: #ffffff;
   }
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -359,8 +359,8 @@
 
 <header>
   <div class="header-rule"><span></span><div class="dot"></div><span></span></div>
-  <h1>方图<em>工坊</em></h1>
-  <p class="subtitle">IMAGE BORDER STUDIO · RATIO GENERATOR</p>
+  <h1>框框地<em>加</em></h1>
+  <p class="subtitle">IMAGE BORDER STUDIO · MULTI-RATIO GENERATOR</p>
   <div class="badge">隐私安全 · 图片不离开您的设备 · 纯本地处理</div>
 </header>
 
@@ -448,10 +448,10 @@
 
   <!-- Upload -->
   <div class="upload-zone" id="uploadZone">
-    <input type="file" id="fileInput" accept="image/*" multiple>
+    <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp" multiple>
     <div class="upload-icon">⊞</div>
     <div class="upload-title">拖拽图片至此，或点击上传</div>
-    <p class="upload-subtitle">支持 JPG · PNG · WEBP · GIF &nbsp;|&nbsp; 可多选批量处理</p>
+    <p class="upload-subtitle">支持 JPG · PNG · WEBP &nbsp;|&nbsp; 可多选批量处理</p>
   </div>
 
   <!-- Results -->
@@ -461,14 +461,14 @@
       <div class="results-meta" id="resultsMeta"></div>
     </div>
     <div class="batch-actions">
-      <button class="btn btn-dark" id="downloadAllBtn">⬇ 全部下载</button>
+      <button class="btn btn-dark" id="downloadAllBtn">⬇ 全部下载 (ZIP)</button>
       <button class="btn btn-primary" id="addMoreBtn">+ 继续添加</button>
     </div>
     <div class="cards-grid" id="cardsGrid"></div>
   </div>
 </main>
 
-<footer>方图工坊 · 所有处理均在浏览器本地完成 · 图片数据不会上传至任何服务器</footer>
+<footer>框框地加 · 所有处理均在浏览器本地完成 · 图片数据不会上传至任何服务器</footer>
 
 <script>
 // ═══════════════════════════════════════
@@ -915,18 +915,39 @@ window.downloadSingle = function(id) {
 
 async function downloadAll() {
   if (!processedImages.length) return;
-  downloadAllBtn.textContent = '⏳ 下载中...';
+  if (processedImages.length === 1) { downloadSingle(processedImages[0].id); return; }
+
+  downloadAllBtn.textContent = '⏳ 打包中...';
   downloadAllBtn.disabled = true;
 
-  for (let i = 0; i < processedImages.length; i++) {
-    const entry = processedImages[i];
-    await new Promise(resolve => {
-      entry.canvas.toBlob(blob => {
-        if (blob) triggerDownload(blob, entry.name);
-        // stagger each download slightly so browser doesn't block them
-        setTimeout(resolve, 300);
-      }, `image/${entry.format}`, entry.quality);
-    });
+  try {
+    if (typeof JSZip === 'undefined') {
+      await new Promise((res, rej) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+        s.onload = res; s.onerror = rej;
+        document.head.appendChild(s);
+      });
+    }
+    const zip = new JSZip();
+    const nameCount = {};
+    const toBlob = (canvas, mime, quality) =>
+      new Promise(resolve => canvas.toBlob(resolve, mime, quality));
+
+    for (const entry of processedImages) {
+      let name = entry.name;
+      nameCount[name] = (nameCount[name] || 0) + 1;
+      if (nameCount[name] > 1) {
+        const ext = name.split('.').pop();
+        name = name.replace(`.${ext}`, `_${nameCount[name]}.${ext}`);
+      }
+      const blob = await toBlob(entry.canvas, `image/${entry.format}`, entry.quality);
+      if (blob) zip.file(name, blob);
+    }
+    const zipBlob = await zip.generateAsync({ type: 'blob' });
+    triggerDownload(zipBlob, `fangtu_${Date.now()}.zip`);
+  } catch (err) {
+    alert('打包失败：' + err.message);
   }
 
   downloadAllBtn.textContent = '⬇ 全部下载';
