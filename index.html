@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>方图工坊 · 一键生成1:1图片</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&family=DM+Mono:wght@400;500&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  :root {
+    --ink: #1a1410;
+    --paper: #f5f0e8;
+    --warm: #e8dcc8;
+    --accent: #c8502a;
+    --accent2: #4a7c59;
+    --muted: #8a7e6e;
+    --border: #d4c9b0;
+    --white: #ffffff;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Serif SC', serif;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* Grain texture overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.035'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 1000;
+    opacity: 0.6;
+  }
+
+  /* Decorative corner marks */
+  .corner-mark {
+    position: fixed;
+    width: 48px;
+    height: 48px;
+    border-color: var(--border);
+    border-style: solid;
+    opacity: 0.6;
+    z-index: 10;
+  }
+  .corner-mark.tl { top: 20px; left: 20px; border-width: 2px 0 0 2px; }
+  .corner-mark.tr { top: 20px; right: 20px; border-width: 2px 2px 0 0; }
+  .corner-mark.bl { bottom: 20px; left: 20px; border-width: 0 0 2px 2px; }
+  .corner-mark.br { bottom: 20px; right: 20px; border-width: 0 2px 2px 0; }
+
+  /* Header */
+  header {
+    text-align: center;
+    padding: 60px 20px 40px;
+    position: relative;
+  }
+
+  .header-rule {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    justify-content: center;
+    margin-bottom: 24px;
+  }
+  .header-rule span { height: 1px; width: 80px; background: var(--border); display: block; }
+  .header-rule .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+
+  h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2.5rem, 6vw, 4.5rem);
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    color: var(--ink);
+  }
+  h1 em {
+    font-style: normal;
+    color: var(--accent);
+  }
+
+  .subtitle {
+    margin-top: 12px;
+    font-size: 0.85rem;
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 16px;
+    padding: 5px 12px;
+    border: 1px solid var(--accent2);
+    border-radius: 2px;
+    font-size: 0.72rem;
+    font-family: 'DM Mono', monospace;
+    color: var(--accent2);
+    letter-spacing: 0.05em;
+  }
+  .badge::before { content: '◎'; }
+
+  /* Main layout */
+  main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 24px 80px;
+  }
+
+  /* Controls Bar */
+  .controls-bar {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+    background: var(--warm);
+    border: 1px solid var(--border);
+    padding: 16px 24px;
+    margin-bottom: 32px;
+  }
+
+  .control-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.8rem;
+    font-family: 'DM Mono', monospace;
+    color: var(--muted);
+  }
+  .control-group label { white-space: nowrap; letter-spacing: 0.05em; }
+
+  .color-swatch-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .color-swatch {
+    width: 28px; height: 28px;
+    border: 2px solid var(--border);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.2s;
+  }
+  .color-swatch:hover { border-color: var(--ink); }
+  .color-swatch input[type="color"] {
+    opacity: 0; position: absolute; width: 0; height: 0;
+  }
+
+  .preset-colors {
+    display: flex;
+    gap: 4px;
+  }
+  .preset-color {
+    width: 20px; height: 20px;
+    border: 1.5px solid var(--border);
+    cursor: pointer;
+    transition: transform 0.15s, border-color 0.15s;
+    flex-shrink: 0;
+  }
+  .preset-color:hover { transform: scale(1.2); border-color: var(--ink); }
+  .preset-color.active { border-color: var(--accent); border-width: 2px; }
+
+  select, .format-btn {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    background: var(--paper);
+    border: 1px solid var(--border);
+    color: var(--ink);
+    padding: 5px 10px;
+    cursor: pointer;
+    outline: none;
+    appearance: none;
+    letter-spacing: 0.05em;
+  }
+
+  .format-group { display: flex; gap: 0; }
+  .format-btn {
+    padding: 5px 12px;
+    transition: background 0.15s, color 0.15s;
+  }
+  .format-btn:first-child { border-right: none; }
+  .format-btn.active { background: var(--ink); color: var(--paper); }
+
+  .quality-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  input[type="range"] {
+    -webkit-appearance: none;
+    width: 80px;
+    height: 3px;
+    background: var(--border);
+    outline: none;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+  }
+  .quality-val { color: var(--ink); min-width: 28px; }
+
+  .divider { width: 1px; height: 32px; background: var(--border); flex-shrink: 0; }
+  .spacer { flex: 1; }
+
+  /* Upload Zone */
+  .upload-zone {
+    border: 2px dashed var(--border);
+    padding: 60px 40px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.25s;
+    background: var(--white);
+    position: relative;
+    margin-bottom: 40px;
+  }
+  .upload-zone:hover, .upload-zone.dragover {
+    border-color: var(--accent);
+    background: #fdf8f4;
+  }
+  .upload-zone.dragover { border-style: solid; }
+
+  .upload-icon {
+    width: 64px; height: 64px;
+    margin: 0 auto 20px;
+    border: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    transition: border-color 0.25s, transform 0.25s;
+  }
+  .upload-zone:hover .upload-icon, .upload-zone.dragover .upload-icon {
+    border-color: var(--accent);
+    transform: translateY(-3px);
+  }
+
+  .upload-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--ink);
+    margin-bottom: 8px;
+  }
+  .upload-subtitle {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+  }
+  .upload-zone input { display: none; }
+
+  /* Results grid */
+  .results-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .results-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.3rem;
+    font-weight: 700;
+  }
+  .results-meta {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+
+  .batch-actions {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+
+  .btn {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    letter-spacing: 0.06em;
+    padding: 9px 20px;
+    border: 1.5px solid;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    background: none;
+  }
+  .btn-primary {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .btn-primary:hover { background: var(--accent); color: var(--white); }
+
+  .btn-secondary {
+    border-color: var(--border);
+    color: var(--muted);
+  }
+  .btn-secondary:hover { border-color: var(--ink); color: var(--ink); }
+
+  .btn-dark {
+    border-color: var(--ink);
+    color: var(--ink);
+  }
+  .btn-dark:hover { background: var(--ink); color: var(--paper); }
+
+  /* Image cards */
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 24px;
+  }
+
+  .image-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    overflow: hidden;
+    animation: cardIn 0.4s ease both;
+  }
+  @keyframes cardIn {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .card-preview {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    position: relative;
+  }
+  .card-preview::after {
+    content: '→';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--ink);
+    color: var(--paper);
+    width: 28px; height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    z-index: 2;
+    font-family: 'DM Mono', monospace;
+    border-radius: 50%;
+  }
+
+  .preview-pane {
+    height: 160px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: repeating-conic-gradient(#e0d8c8 0% 25%, var(--warm) 0% 50%) 0 0 / 16px 16px;
+  }
+  .preview-pane img, .preview-pane canvas {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    display: block;
+  }
+
+  .card-info {
+    padding: 14px 16px;
+    border-top: 1px solid var(--border);
+  }
+  .card-name {
+    font-size: 0.8rem;
+    font-family: 'DM Mono', monospace;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 6px;
+  }
+  .card-meta {
+    display: flex;
+    gap: 8px;
+    font-size: 0.7rem;
+    font-family: 'DM Mono', monospace;
+    color: var(--muted);
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .meta-tag {
+    padding: 2px 6px;
+    background: var(--warm);
+    border-radius: 1px;
+  }
+  .meta-tag.new { background: #e8f0eb; color: var(--accent2); }
+
+  .card-actions { display: flex; gap: 8px; }
+  .card-btn {
+    flex: 1;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    padding: 7px;
+    border: 1px solid var(--border);
+    background: none;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    text-align: center;
+    transition: all 0.2s;
+    color: var(--ink);
+    text-transform: uppercase;
+  }
+  .card-btn:hover { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .card-btn.dl { border-color: var(--accent); color: var(--accent); }
+  .card-btn.dl:hover { background: var(--accent); color: var(--white); border-color: var(--accent); }
+
+  /* Empty state */
+  #empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
+    display: none;
+  }
+
+  /* Processing state */
+  .processing-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(245, 240, 232, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+  }
+  .spinner {
+    width: 20px; height: 20px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-right: 10px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Footer */
+  footer {
+    text-align: center;
+    padding: 40px 20px;
+    border-top: 1px solid var(--border);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--warm); }
+  ::-webkit-scrollbar-thumb { background: var(--border); }
+
+  @media (max-width: 600px) {
+    .controls-bar { gap: 12px; }
+    .divider { display: none; }
+    .cards-grid { grid-template-columns: 1fr; }
+    h1 { font-size: 2.2rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="corner-mark tl"></div>
+<div class="corner-mark tr"></div>
+<div class="corner-mark bl"></div>
+<div class="corner-mark br"></div>
+
+<header>
+  <div class="header-rule">
+    <span></span><div class="dot"></div><span></span>
+  </div>
+  <h1>方图<em>工坊</em></h1>
+  <p class="subtitle">SQUARE IMAGE STUDIO · 1:1 BORDER GENERATOR</p>
+  <div class="badge">隐私安全 · 图片不离开您的设备 · 纯本地处理</div>
+</header>
+
+<main>
+  <!-- Controls -->
+  <div class="controls-bar">
+    <div class="control-group">
+      <label>边框色</label>
+      <div class="color-swatch-wrapper">
+        <div class="color-swatch" id="colorPickerTrigger" title="自定义颜色" style="background:#ffffff">
+          <input type="color" id="customColor" value="#ffffff">
+        </div>
+        <div class="preset-colors" id="presetColors">
+          <div class="preset-color active" data-color="#ffffff" style="background:#ffffff" title="白色"></div>
+          <div class="preset-color" data-color="#000000" style="background:#000000" title="黑色"></div>
+          <div class="preset-color" data-color="#f5f0e8" style="background:#f5f0e8" title="米色"></div>
+          <div class="preset-color" data-color="#ffddd2" style="background:#ffddd2" title="浅粉"></div>
+          <div class="preset-color" data-color="#d2e3fc" style="background:#d2e3fc" title="浅蓝"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="control-group">
+      <label>格式</label>
+      <div class="format-group">
+        <button class="format-btn active" data-fmt="jpeg">JPG</button>
+        <button class="format-btn" data-fmt="png">PNG</button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="control-group quality-group" id="qualityGroup">
+      <label>质量</label>
+      <input type="range" id="qualitySlider" min="60" max="100" value="95">
+      <span class="quality-val" id="qualityVal">95%</span>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="control-group quality-group">
+      <label>内边距</label>
+      <input type="range" id="paddingSlider" min="0" max="20" value="5">
+      <span class="quality-val" id="paddingVal">5%</span>
+    </div>
+
+    <div class="spacer"></div>
+
+    <button class="btn btn-secondary" id="clearAllBtn" style="display:none">清除全部</button>
+  </div>
+
+  <!-- Upload Zone -->
+  <div class="upload-zone" id="uploadZone">
+    <input type="file" id="fileInput" accept="image/*" multiple>
+    <div class="upload-icon">⊞</div>
+    <div class="upload-title">拖拽图片至此，或点击上传</div>
+    <p class="upload-subtitle">支持 JPG · PNG · WEBP · GIF &nbsp;|&nbsp; 可多选批量处理</p>
+  </div>
+
+  <!-- Results -->
+  <div id="resultsSection" style="display:none">
+    <div class="results-header">
+      <div class="results-title">处理结果</div>
+      <div class="results-meta" id="resultsMeta"></div>
+    </div>
+    <div class="batch-actions">
+      <button class="btn btn-dark" id="downloadAllBtn">⬇ 批量下载 ZIP</button>
+      <button class="btn btn-primary" id="addMoreBtn">+ 继续添加</button>
+    </div>
+    <div class="cards-grid" id="cardsGrid"></div>
+  </div>
+</main>
+
+<footer>
+  方图工坊 · 所有处理均在浏览器本地完成 · 图片数据不会上传至任何服务器
+</footer>
+
+<script>
+  // State
+  let currentColor = '#ffffff';
+  let currentFormat = 'jpeg';
+  let currentQuality = 0.95;
+  let currentPaddingRatio = 0.05;
+  let processedImages = [];
+
+  // DOM refs
+  const uploadZone = document.getElementById('uploadZone');
+  const fileInput = document.getElementById('fileInput');
+  const cardsGrid = document.getElementById('cardsGrid');
+  const resultsSection = document.getElementById('resultsSection');
+  const resultsMeta = document.getElementById('resultsMeta');
+  const clearAllBtn = document.getElementById('clearAllBtn');
+  const downloadAllBtn = document.getElementById('downloadAllBtn');
+  const addMoreBtn = document.getElementById('addMoreBtn');
+  const qualitySlider = document.getElementById('qualitySlider');
+  const qualityVal = document.getElementById('qualityVal');
+  const qualityGroup = document.getElementById('qualityGroup');
+  const customColorInput = document.getElementById('customColor');
+  const colorPickerTrigger = document.getElementById('colorPickerTrigger');
+
+  // Color picker
+  colorPickerTrigger.addEventListener('click', () => customColorInput.click());
+  customColorInput.addEventListener('input', e => {
+    setColor(e.target.value);
+    document.querySelectorAll('.preset-color').forEach(p => p.classList.remove('active'));
+  });
+
+  document.getElementById('presetColors').addEventListener('click', e => {
+    const p = e.target.closest('.preset-color');
+    if (!p) return;
+    document.querySelectorAll('.preset-color').forEach(x => x.classList.remove('active'));
+    p.classList.add('active');
+    setColor(p.dataset.color);
+  });
+
+  function setColor(c) {
+    currentColor = c;
+    colorPickerTrigger.style.background = c;
+    customColorInput.value = c;
+  }
+
+  // Format buttons
+  document.querySelectorAll('.format-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.format-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentFormat = btn.dataset.fmt;
+      qualityGroup.style.opacity = currentFormat === 'png' ? '0.4' : '1';
+      qualityGroup.style.pointerEvents = currentFormat === 'png' ? 'none' : '';
+    });
+  });
+
+  // Quality slider
+  qualitySlider.addEventListener('input', e => {
+    currentQuality = e.target.value / 100;
+    qualityVal.textContent = e.target.value + '%';
+  });
+
+  document.getElementById('paddingSlider').addEventListener('input', e => {
+    currentPaddingRatio = e.target.value / 100;
+    document.getElementById('paddingVal').textContent = e.target.value + '%';
+  });
+
+  // Upload zone
+  uploadZone.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', e => handleFiles(e.target.files));
+
+  uploadZone.addEventListener('dragover', e => {
+    e.preventDefault();
+    uploadZone.classList.add('dragover');
+  });
+  uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+  uploadZone.addEventListener('drop', e => {
+    e.preventDefault();
+    uploadZone.classList.remove('dragover');
+    handleFiles(e.dataTransfer.files);
+  });
+
+  addMoreBtn.addEventListener('click', () => fileInput.click());
+  clearAllBtn.addEventListener('click', clearAll);
+  downloadAllBtn.addEventListener('click', downloadAll);
+
+  function handleFiles(files) {
+    const imageFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
+    if (!imageFiles.length) return;
+    imageFiles.forEach((f, i) => {
+      setTimeout(() => processImage(f), i * 80);
+    });
+  }
+
+  function processImage(file) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const { canvas, size } = makeSquare(img, currentColor, currentFormat, currentQuality, currentPaddingRatio);
+        const ext = currentFormat === 'png' ? 'png' : 'jpg';
+        const baseName = file.name.replace(/\.[^/.]+$/, '');
+        const outName = `${baseName}_square.${ext}`;
+        const dataUrl = canvas.toDataURL(`image/${currentFormat}`, currentQuality);
+
+        const entry = {
+          id: Date.now() + Math.random(),
+          name: outName,
+          origName: file.name,
+          origW: img.naturalWidth,
+          origH: img.naturalHeight,
+          squareSize: size,
+          dataUrl,
+          canvas,
+          format: currentFormat,
+          quality: currentQuality,
+        };
+        processedImages.push(entry);
+        renderCard(entry, img);
+        updateResultsUI();
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function makeSquare(img, bgColor, fmt, quality, paddingRatio) {
+    const w = img.naturalWidth;
+    const h = img.naturalHeight;
+    const longEdge = Math.max(w, h);
+    const padding = Math.round(longEdge * paddingRatio);
+    const size = longEdge + padding * 2;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, size, size);
+
+    const x = Math.floor((size - w) / 2);
+    const y = Math.floor((size - h) / 2);
+    ctx.drawImage(img, x, y);
+
+    return { canvas, size };
+  }
+
+  function renderCard(entry, origImg) {
+    const card = document.createElement('div');
+    card.className = 'image-card';
+    card.dataset.id = entry.id;
+
+    // Preview canvases
+    const origThumb = document.createElement('img');
+    origThumb.src = origImg.src;
+    origThumb.style.cssText = 'max-width:100%;max-height:160px;object-fit:contain;display:block;';
+
+    const squareThumb = document.createElement('img');
+    squareThumb.src = entry.dataUrl;
+    squareThumb.style.cssText = 'max-width:100%;max-height:160px;object-fit:contain;display:block;';
+
+    card.innerHTML = `
+      <div class="card-preview">
+        <div class="preview-pane" id="orig-${entry.id}"></div>
+        <div class="preview-pane" id="sq-${entry.id}"></div>
+      </div>
+      <div class="card-info">
+        <div class="card-name" title="${entry.outName}">${entry.name}</div>
+        <div class="card-meta">
+          <span class="meta-tag">${entry.origW}×${entry.origH}</span>
+          <span>→</span>
+          <span class="meta-tag new">${entry.squareSize}×${entry.squareSize}</span>
+        </div>
+        <div class="card-actions">
+          <button class="card-btn dl" onclick="downloadSingle('${entry.id}')">下载</button>
+          <button class="card-btn" onclick="removeCard('${entry.id}')">移除</button>
+        </div>
+      </div>
+    `;
+
+    cardsGrid.appendChild(card);
+    document.getElementById(`orig-${entry.id}`).appendChild(origThumb);
+    document.getElementById(`sq-${entry.id}`).appendChild(squareThumb);
+  }
+
+  function updateResultsUI() {
+    if (processedImages.length > 0) {
+      resultsSection.style.display = 'block';
+      clearAllBtn.style.display = 'block';
+      resultsMeta.textContent = `共 ${processedImages.length} 张`;
+    } else {
+      resultsSection.style.display = 'none';
+      clearAllBtn.style.display = 'none';
+    }
+  }
+
+  window.downloadSingle = function(id) {
+    const entry = processedImages.find(e => String(e.id) === String(id));
+    if (!entry) return;
+    const mimeType = `image/${entry.format || currentFormat}`;
+    const quality = entry.quality !== undefined ? entry.quality : currentQuality;
+    entry.canvas.toBlob(blob => {
+      if (!blob) { alert('下载失败，请重试'); return; }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = entry.name;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 300);
+    }, mimeType, quality);
+  };
+
+  window.removeCard = function(id) {
+    processedImages = processedImages.filter(e => String(e.id) !== String(id));
+    const card = cardsGrid.querySelector(`[data-id="${id}"]`);
+    if (card) {
+      card.style.animation = 'cardOut 0.25s ease forwards';
+      card.style.cssText += ';animation:cardOut 0.25s ease forwards;';
+      setTimeout(() => card.remove(), 250);
+    }
+    updateResultsUI();
+  };
+
+  function clearAll() {
+    processedImages = [];
+    cardsGrid.innerHTML = '';
+    fileInput.value = '';
+    updateResultsUI();
+  }
+
+  async function downloadAll() {
+    if (!processedImages.length) return;
+    if (processedImages.length === 1) {
+      downloadSingle(processedImages[0].id);
+      return;
+    }
+    downloadAllBtn.textContent = '⏳ 打包中...';
+    downloadAllBtn.disabled = true;
+    try {
+      const zip = new JSZip();
+      const nameCount = {};
+
+      const toBlob = (canvas, mime, quality) => new Promise(resolve =>
+        canvas.toBlob(blob => resolve(blob), mime, quality)
+      );
+
+      for (const entry of processedImages) {
+        let name = entry.name;
+        nameCount[name] = (nameCount[name] || 0) + 1;
+        if (nameCount[name] > 1) {
+          const ext = name.split('.').pop();
+          name = name.replace(`.${ext}`, `_${nameCount[name]}.${ext}`);
+        }
+        const mime = `image/${entry.format || 'jpeg'}`;
+        const quality = entry.quality !== undefined ? entry.quality : 0.95;
+        const blob = await toBlob(entry.canvas, mime, quality);
+        if (blob) zip.file(name, blob);
+      }
+
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(zipBlob);
+      a.download = `square_images_${Date.now()}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(a.href); }, 300);
+    } catch (err) {
+      alert('打包失败：' + err.message);
+    }
+    downloadAllBtn.textContent = '⬇ 批量下载 ZIP';
+    downloadAllBtn.disabled = false;
+  }
+
+  // cardOut animation
+  const style = document.createElement('style');
+  style.textContent = '@keyframes cardOut { to { opacity: 0; transform: scale(0.95); } }';
+  document.head.appendChild(style);
+</script>
+</body>
+</html>
+
+<!--
+==========================================================
+  部署到 GitHub Pages（免费，永久可访问，可分享给任何人）
+==========================================================
+
+第一步：注册 GitHub 账号
+  → https://github.com （免费）
+
+第二步：新建仓库
+  1. 点击右上角 "+" → "New repository"
+  2. Repository name 填写：square-image-tool（或任意名称）
+  3. 选择 Public（公开）
+  4. 点击 "Create repository"
+
+第三步：上传文件
+  1. 进入刚创建的仓库
+  2. 点击 "Add file" → "Upload files"
+  3. 把 square-image-tool.html 拖进去
+  4. 重要：将文件重命名为 index.html（上传后可在仓库内重命名）
+  5. 点击 "Commit changes"
+
+第四步：开启 GitHub Pages
+  1. 进入仓库 → 点击顶部 "Settings"
+  2. 左侧菜单找到 "Pages"
+  3. Source 选择 "Deploy from a branch"
+  4. Branch 选择 "main"，文件夹选 "/ (root)"
+  5. 点击 "Save"
+
+第五步：获取链接
+  等待约 1-2 分钟后，页面顶部会出现：
+  "Your site is live at https://你的用户名.github.io/square-image-tool/"
+  
+  这个链接就可以直接分享给任何人使用！
+==========================================================
+-->
