@@ -3,10 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>方图工坊 · 一键生成1:1图片</title>
+<title>方图工坊 · 加边框生成器</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&family=DM+Mono:wght@400;500&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
   :root {
     --ink: #1a1410;
@@ -18,7 +17,6 @@
     --border: #d4c9b0;
     --white: #ffffff;
   }
-
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {
@@ -27,10 +25,8 @@
     color: var(--ink);
     min-height: 100vh;
     overflow-x: hidden;
-    position: relative;
   }
 
-  /* Grain texture overlay */
   body::before {
     content: '';
     position: fixed;
@@ -41,34 +37,22 @@
     opacity: 0.6;
   }
 
-  /* Decorative corner marks */
   .corner-mark {
-    position: fixed;
-    width: 48px;
-    height: 48px;
-    border-color: var(--border);
-    border-style: solid;
-    opacity: 0.6;
-    z-index: 10;
+    position: fixed; width: 48px; height: 48px;
+    border-color: var(--border); border-style: solid; opacity: 0.6; z-index: 10;
   }
   .corner-mark.tl { top: 20px; left: 20px; border-width: 2px 0 0 2px; }
   .corner-mark.tr { top: 20px; right: 20px; border-width: 2px 2px 0 0; }
   .corner-mark.bl { bottom: 20px; left: 20px; border-width: 0 0 2px 2px; }
   .corner-mark.br { bottom: 20px; right: 20px; border-width: 0 2px 2px 0; }
 
-  /* Header */
   header {
     text-align: center;
     padding: 60px 20px 40px;
-    position: relative;
   }
-
   .header-rule {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    justify-content: center;
-    margin-bottom: 24px;
+    display: flex; align-items: center; gap: 16px;
+    justify-content: center; margin-bottom: 24px;
   }
   .header-rule span { height: 1px; width: 80px; background: var(--border); display: block; }
   .header-rule .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
@@ -76,407 +60,293 @@
   h1 {
     font-family: 'Playfair Display', serif;
     font-size: clamp(2.5rem, 6vw, 4.5rem);
-    font-weight: 900;
-    letter-spacing: -0.02em;
-    line-height: 1;
-    color: var(--ink);
+    font-weight: 900; letter-spacing: -0.02em; line-height: 1;
   }
-  h1 em {
-    font-style: normal;
-    color: var(--accent);
-  }
+  h1 em { font-style: normal; color: var(--accent); }
 
   .subtitle {
-    margin-top: 12px;
-    font-size: 0.85rem;
-    color: var(--muted);
-    letter-spacing: 0.15em;
-    font-family: 'DM Mono', monospace;
+    margin-top: 12px; font-size: 0.85rem; color: var(--muted);
+    letter-spacing: 0.15em; font-family: 'DM Mono', monospace;
   }
-
   .badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    margin-top: 16px;
-    padding: 5px 12px;
-    border: 1px solid var(--accent2);
-    border-radius: 2px;
-    font-size: 0.72rem;
-    font-family: 'DM Mono', monospace;
-    color: var(--accent2);
-    letter-spacing: 0.05em;
+    display: inline-flex; align-items: center; gap: 6px;
+    margin-top: 16px; padding: 5px 12px;
+    border: 1px solid var(--accent2); border-radius: 2px;
+    font-size: 0.72rem; font-family: 'DM Mono', monospace;
+    color: var(--accent2); letter-spacing: 0.05em;
   }
   .badge::before { content: '◎'; }
 
-  /* Main layout */
-  main {
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 0 24px 80px;
-  }
+  main { max-width: 1100px; margin: 0 auto; padding: 0 24px 80px; }
 
-  /* Controls Bar */
+  /* ── Controls Bar ── */
   .controls-bar {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    flex-wrap: wrap;
-    background: var(--warm);
-    border: 1px solid var(--border);
-    padding: 16px 24px;
-    margin-bottom: 32px;
+    display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+    background: var(--warm); border: 1px solid var(--border);
+    padding: 16px 24px; margin-bottom: 32px;
   }
-
   .control-group {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 0.8rem;
-    font-family: 'DM Mono', monospace;
-    color: var(--muted);
+    display: flex; align-items: center; gap: 10px;
+    font-size: 0.8rem; font-family: 'DM Mono', monospace; color: var(--muted);
   }
   .control-group label { white-space: nowrap; letter-spacing: 0.05em; }
+  .divider { width: 1px; height: 32px; background: var(--border); flex-shrink: 0; }
+  .spacer { flex: 1; }
 
-  .color-swatch-wrapper {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .color-swatch {
-    width: 28px; height: 28px;
-    border: 2px solid var(--border);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: border-color 0.2s;
-  }
-  .color-swatch:hover { border-color: var(--ink); }
-  .color-swatch input[type="color"] {
-    opacity: 0; position: absolute; width: 0; height: 0;
-  }
-
-  .preset-colors {
-    display: flex;
-    gap: 4px;
-  }
-  .preset-color {
-    width: 20px; height: 20px;
-    border: 1.5px solid var(--border);
-    cursor: pointer;
-    transition: transform 0.15s, border-color 0.15s;
-    flex-shrink: 0;
-  }
-  .preset-color:hover { transform: scale(1.2); border-color: var(--ink); }
-  .preset-color.active { border-color: var(--accent); border-width: 2px; }
-
-  select, .format-btn {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.78rem;
-    background: var(--paper);
-    border: 1px solid var(--border);
-    color: var(--ink);
-    padding: 5px 10px;
-    cursor: pointer;
-    outline: none;
-    appearance: none;
-    letter-spacing: 0.05em;
-  }
-
-  .format-group { display: flex; gap: 0; }
+  /* Format buttons */
+  .format-group { display: flex; }
   .format-btn {
-    padding: 5px 12px;
-    transition: background 0.15s, color 0.15s;
+    font-family: 'DM Mono', monospace; font-size: 0.78rem;
+    background: var(--paper); border: 1px solid var(--border);
+    color: var(--ink); padding: 5px 12px; cursor: pointer;
+    outline: none; letter-spacing: 0.05em; transition: background 0.15s, color 0.15s;
   }
   .format-btn:first-child { border-right: none; }
   .format-btn.active { background: var(--ink); color: var(--paper); }
 
-  .quality-group {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+  /* Ratio selector */
+  .ratio-group { display: flex; flex-wrap: wrap; gap: 4px; }
+  .ratio-btn {
+    font-family: 'DM Mono', monospace; font-size: 0.72rem;
+    background: var(--paper); border: 1px solid var(--border);
+    color: var(--ink); padding: 4px 9px; cursor: pointer;
+    outline: none; letter-spacing: 0.04em; transition: background 0.15s, color 0.15s;
+    white-space: nowrap;
   }
+  .ratio-btn.active { background: var(--ink); color: var(--paper); }
+  .ratio-custom-inputs {
+    display: none; align-items: center; gap: 4px;
+    font-family: 'DM Mono', monospace; font-size: 0.75rem; color: var(--muted);
+  }
+  .ratio-custom-inputs.visible { display: flex; }
+  .ratio-custom-inputs input {
+    width: 40px; padding: 4px 6px; border: 1px solid var(--border);
+    background: var(--paper); font-family: 'DM Mono', monospace;
+    font-size: 0.75rem; text-align: center; outline: none; color: var(--ink);
+  }
+
+  /* Sliders */
+  .slider-group { display: flex; align-items: center; gap: 8px; }
   input[type="range"] {
-    -webkit-appearance: none;
-    width: 80px;
-    height: 3px;
-    background: var(--border);
-    outline: none;
+    -webkit-appearance: none; width: 80px; height: 3px;
+    background: var(--border); outline: none;
   }
   input[type="range"]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 12px; height: 12px;
-    border-radius: 50%;
-    background: var(--accent);
-    cursor: pointer;
+    -webkit-appearance: none; width: 12px; height: 12px;
+    border-radius: 50%; background: var(--accent); cursor: pointer;
   }
-  .quality-val { color: var(--ink); min-width: 28px; }
+  .slider-val { color: var(--ink); min-width: 32px; font-family: 'DM Mono', monospace; font-size: 0.78rem; }
 
-  .divider { width: 1px; height: 32px; background: var(--border); flex-shrink: 0; }
-  .spacer { flex: 1; }
-
-  /* Upload Zone */
-  .upload-zone {
-    border: 2px dashed var(--border);
-    padding: 60px 40px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.25s;
-    background: var(--white);
+  /* ── HSV Color Picker ── */
+  .color-picker-wrapper { position: relative; }
+  .color-trigger {
+    width: 32px; height: 32px; border: 2px solid var(--border);
+    cursor: pointer; transition: border-color 0.2s; flex-shrink: 0;
     position: relative;
-    margin-bottom: 40px;
+  }
+  .color-trigger:hover { border-color: var(--ink); }
+  .color-trigger::after {
+    content: '▾'; position: absolute; right: -14px; top: 50%;
+    transform: translateY(-50%); font-size: 0.6rem; color: var(--muted);
+  }
+
+  .color-panel {
+    position: absolute; top: calc(100% + 10px); left: 0; z-index: 500;
+    background: var(--white); border: 1px solid var(--border);
+    padding: 14px; width: 240px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    display: none;
+  }
+  .color-panel.open { display: block; }
+
+  /* SV square */
+  .sv-square {
+    width: 100%; height: 160px; position: relative;
+    border-radius: 2px; cursor: crosshair; margin-bottom: 10px;
+    border: 1px solid var(--border);
+  }
+  .sv-square canvas { width: 100%; height: 100%; display: block; border-radius: 2px; }
+  .sv-cursor {
+    position: absolute; width: 12px; height: 12px;
+    border-radius: 50%; border: 2px solid white;
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.4);
+    pointer-events: none; transform: translate(-50%, -50%);
+  }
+
+  /* Hue slider */
+  .hue-track {
+    width: 100%; height: 14px; border-radius: 7px;
+    background: linear-gradient(to right,
+      hsl(0,100%,50%), hsl(30,100%,50%), hsl(60,100%,50%),
+      hsl(90,100%,50%), hsl(120,100%,50%), hsl(150,100%,50%),
+      hsl(180,100%,50%), hsl(210,100%,50%), hsl(240,100%,50%),
+      hsl(270,100%,50%), hsl(300,100%,50%), hsl(330,100%,50%), hsl(360,100%,50%));
+    position: relative; cursor: pointer; margin-bottom: 10px;
+    border: 1px solid var(--border);
+  }
+  .hue-thumb {
+    position: absolute; top: 50%; width: 16px; height: 16px;
+    border-radius: 50%; border: 2px solid white;
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.3);
+    transform: translate(-50%, -50%); pointer-events: none;
+  }
+
+  /* Alpha slider */
+  .alpha-track {
+    width: 100%; height: 14px; border-radius: 7px;
+    position: relative; cursor: pointer; margin-bottom: 10px;
+    border: 1px solid var(--border);
+    background-image: repeating-conic-gradient(#ccc 0% 25%, white 0% 50%);
+    background-size: 10px 10px;
+  }
+  .alpha-gradient {
+    position: absolute; inset: 0; border-radius: 7px;
+  }
+  .alpha-thumb {
+    position: absolute; top: 50%; width: 16px; height: 16px;
+    border-radius: 50%; border: 2px solid white;
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.3);
+    transform: translate(-50%, -50%); pointer-events: none;
+  }
+
+  /* Hex input & preview */
+  .color-bottom {
+    display: flex; align-items: center; gap: 8px;
+  }
+  .hex-input {
+    flex: 1; font-family: 'DM Mono', monospace; font-size: 0.78rem;
+    padding: 5px 8px; border: 1px solid var(--border);
+    background: var(--paper); color: var(--ink); outline: none;
+    letter-spacing: 0.05em;
+  }
+  .color-preview-box {
+    width: 32px; height: 32px; border: 1px solid var(--border); flex-shrink: 0;
+  }
+
+  /* Preset swatches */
+  .preset-row {
+    display: flex; gap: 5px; margin-top: 10px; flex-wrap: wrap;
+  }
+  .swatch {
+    width: 20px; height: 20px; border: 1.5px solid var(--border);
+    cursor: pointer; flex-shrink: 0; transition: transform 0.15s;
+  }
+  .swatch:hover { transform: scale(1.2); border-color: var(--ink); }
+
+  /* ── Upload Zone ── */
+  .upload-zone {
+    border: 2px dashed var(--border); padding: 60px 40px;
+    text-align: center; cursor: pointer; transition: all 0.25s;
+    background: var(--white); position: relative; margin-bottom: 40px;
   }
   .upload-zone:hover, .upload-zone.dragover {
-    border-color: var(--accent);
-    background: #fdf8f4;
+    border-color: var(--accent); background: #fdf8f4;
   }
   .upload-zone.dragover { border-style: solid; }
-
   .upload-icon {
-    width: 64px; height: 64px;
-    margin: 0 auto 20px;
+    width: 64px; height: 64px; margin: 0 auto 20px;
     border: 2px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.8rem;
-    transition: border-color 0.25s, transform 0.25s;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.8rem; transition: border-color 0.25s, transform 0.25s;
   }
   .upload-zone:hover .upload-icon, .upload-zone.dragover .upload-icon {
-    border-color: var(--accent);
-    transform: translateY(-3px);
+    border-color: var(--accent); transform: translateY(-3px);
   }
-
   .upload-title {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.4rem;
-    font-weight: 700;
-    color: var(--ink);
-    margin-bottom: 8px;
+    font-family: 'Playfair Display', serif; font-size: 1.4rem;
+    font-weight: 700; margin-bottom: 8px;
   }
   .upload-subtitle {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.75rem;
-    color: var(--muted);
-    letter-spacing: 0.08em;
+    font-family: 'DM Mono', monospace; font-size: 0.75rem;
+    color: var(--muted); letter-spacing: 0.08em;
   }
   .upload-zone input { display: none; }
 
-  /* Results grid */
+  /* ── Results ── */
   .results-header {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    margin-bottom: 20px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid var(--border);
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid var(--border);
   }
-  .results-title {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.3rem;
-    font-weight: 700;
-  }
-  .results-meta {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.75rem;
-    color: var(--muted);
-  }
+  .results-title { font-family: 'Playfair Display', serif; font-size: 1.3rem; font-weight: 700; }
+  .results-meta { font-family: 'DM Mono', monospace; font-size: 0.75rem; color: var(--muted); }
 
-  .batch-actions {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 24px;
-  }
-
+  .batch-actions { display: flex; gap: 10px; margin-bottom: 24px; }
   .btn {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.78rem;
-    letter-spacing: 0.06em;
-    padding: 9px 20px;
-    border: 1.5px solid;
-    cursor: pointer;
-    transition: all 0.2s;
-    text-transform: uppercase;
-    background: none;
+    font-family: 'DM Mono', monospace; font-size: 0.78rem;
+    letter-spacing: 0.06em; padding: 9px 20px; border: 1.5px solid;
+    cursor: pointer; transition: all 0.2s; text-transform: uppercase; background: none;
   }
-  .btn-primary {
-    border-color: var(--accent);
-    color: var(--accent);
-  }
+  .btn-primary { border-color: var(--accent); color: var(--accent); }
   .btn-primary:hover { background: var(--accent); color: var(--white); }
-
-  .btn-secondary {
-    border-color: var(--border);
-    color: var(--muted);
-  }
+  .btn-secondary { border-color: var(--border); color: var(--muted); }
   .btn-secondary:hover { border-color: var(--ink); color: var(--ink); }
-
-  .btn-dark {
-    border-color: var(--ink);
-    color: var(--ink);
-  }
+  .btn-dark { border-color: var(--ink); color: var(--ink); }
   .btn-dark:hover { background: var(--ink); color: var(--paper); }
 
-  /* Image cards */
   .cards-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 24px;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px;
   }
-
   .image-card {
-    background: var(--white);
-    border: 1px solid var(--border);
-    overflow: hidden;
-    animation: cardIn 0.4s ease both;
+    background: var(--white); border: 1px solid var(--border);
+    overflow: hidden; animation: cardIn 0.4s ease both;
   }
-  @keyframes cardIn {
-    from { opacity: 0; transform: translateY(16px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
+  @keyframes cardIn { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes cardOut { to { opacity:0; transform:scale(0.95); } }
 
-  .card-preview {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    position: relative;
-  }
+  .card-preview { display: grid; grid-template-columns: 1fr 1fr; position: relative; }
   .card-preview::after {
-    content: '→';
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    background: var(--ink);
-    color: var(--paper);
-    width: 28px; height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.85rem;
-    z-index: 2;
-    font-family: 'DM Mono', monospace;
-    border-radius: 50%;
+    content: '→'; position: absolute; left: 50%; top: 50%;
+    transform: translate(-50%,-50%);
+    background: var(--ink); color: var(--paper);
+    width: 28px; height: 28px; display: flex; align-items: center;
+    justify-content: center; font-size: 0.85rem; z-index: 2;
+    font-family: 'DM Mono', monospace; border-radius: 50%;
   }
-
   .preview-pane {
-    height: 160px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    height: 160px; display: flex; align-items: center; justify-content: center;
     overflow: hidden;
     background: repeating-conic-gradient(#e0d8c8 0% 25%, var(--warm) 0% 50%) 0 0 / 16px 16px;
   }
-  .preview-pane img, .preview-pane canvas {
-    max-width: 100%;
-    max-height: 100%;
-    object-fit: contain;
-    display: block;
-  }
+  .preview-pane img { max-width:100%; max-height:100%; object-fit:contain; display:block; }
 
-  .card-info {
-    padding: 14px 16px;
-    border-top: 1px solid var(--border);
-  }
+  .card-info { padding: 14px 16px; border-top: 1px solid var(--border); }
   .card-name {
-    font-size: 0.8rem;
-    font-family: 'DM Mono', monospace;
-    color: var(--ink);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    margin-bottom: 6px;
+    font-size: 0.8rem; font-family: 'DM Mono', monospace;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 6px;
   }
   .card-meta {
-    display: flex;
-    gap: 8px;
-    font-size: 0.7rem;
-    font-family: 'DM Mono', monospace;
-    color: var(--muted);
-    margin-bottom: 12px;
-    flex-wrap: wrap;
+    display: flex; gap: 8px; font-size: 0.7rem; font-family: 'DM Mono', monospace;
+    color: var(--muted); margin-bottom: 12px; flex-wrap: wrap;
   }
-  .meta-tag {
-    padding: 2px 6px;
-    background: var(--warm);
-    border-radius: 1px;
-  }
+  .meta-tag { padding: 2px 6px; background: var(--warm); border-radius: 1px; }
   .meta-tag.new { background: #e8f0eb; color: var(--accent2); }
 
   .card-actions { display: flex; gap: 8px; }
   .card-btn {
-    flex: 1;
-    font-family: 'DM Mono', monospace;
-    font-size: 0.7rem;
-    padding: 7px;
-    border: 1px solid var(--border);
-    background: none;
-    cursor: pointer;
-    letter-spacing: 0.05em;
-    text-align: center;
-    transition: all 0.2s;
-    color: var(--ink);
-    text-transform: uppercase;
+    flex: 1; font-family: 'DM Mono', monospace; font-size: 0.7rem;
+    padding: 7px; border: 1px solid var(--border); background: none;
+    cursor: pointer; text-align: center; transition: all 0.2s;
+    color: var(--ink); text-transform: uppercase; letter-spacing: 0.05em;
   }
   .card-btn:hover { background: var(--ink); color: var(--paper); border-color: var(--ink); }
   .card-btn.dl { border-color: var(--accent); color: var(--accent); }
   .card-btn.dl:hover { background: var(--accent); color: var(--white); border-color: var(--accent); }
 
-  /* Empty state */
-  #empty-state {
-    text-align: center;
-    padding: 60px 20px;
-    color: var(--muted);
-    font-family: 'DM Mono', monospace;
-    font-size: 0.8rem;
-    letter-spacing: 0.08em;
-    display: none;
-  }
-
-  /* Processing state */
-  .processing-overlay {
-    position: absolute;
-    inset: 0;
-    background: rgba(245, 240, 232, 0.85);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: 'DM Mono', monospace;
-    font-size: 0.75rem;
-    color: var(--muted);
-    letter-spacing: 0.1em;
-  }
-  .spinner {
-    width: 20px; height: 20px;
-    border: 2px solid var(--border);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    margin-right: 10px;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  /* Footer */
   footer {
-    text-align: center;
-    padding: 40px 20px;
-    border-top: 1px solid var(--border);
-    font-family: 'DM Mono', monospace;
-    font-size: 0.72rem;
-    color: var(--muted);
-    letter-spacing: 0.08em;
+    text-align: center; padding: 40px 20px; border-top: 1px solid var(--border);
+    font-family: 'DM Mono', monospace; font-size: 0.72rem;
+    color: var(--muted); letter-spacing: 0.08em;
   }
-
-  /* Scrollbar */
   ::-webkit-scrollbar { width: 6px; }
   ::-webkit-scrollbar-track { background: var(--warm); }
   ::-webkit-scrollbar-thumb { background: var(--border); }
 
-  @media (max-width: 600px) {
+  @media (max-width: 640px) {
     .controls-bar { gap: 12px; }
     .divider { display: none; }
     .cards-grid { grid-template-columns: 1fr; }
     h1 { font-size: 2.2rem; }
+    .color-panel { left: -40px; }
   }
 </style>
 </head>
@@ -488,35 +358,64 @@
 <div class="corner-mark br"></div>
 
 <header>
-  <div class="header-rule">
-    <span></span><div class="dot"></div><span></span>
-  </div>
+  <div class="header-rule"><span></span><div class="dot"></div><span></span></div>
   <h1>方图<em>工坊</em></h1>
-  <p class="subtitle">SQUARE IMAGE STUDIO · 1:1 BORDER GENERATOR</p>
+  <p class="subtitle">IMAGE BORDER STUDIO · RATIO GENERATOR</p>
   <div class="badge">隐私安全 · 图片不离开您的设备 · 纯本地处理</div>
 </header>
 
 <main>
-  <!-- Controls -->
   <div class="controls-bar">
+
+    <!-- Color Picker -->
     <div class="control-group">
       <label>边框色</label>
-      <div class="color-swatch-wrapper">
-        <div class="color-swatch" id="colorPickerTrigger" title="自定义颜色" style="background:#ffffff">
-          <input type="color" id="customColor" value="#ffffff">
-        </div>
-        <div class="preset-colors" id="presetColors">
-          <div class="preset-color active" data-color="#ffffff" style="background:#ffffff" title="白色"></div>
-          <div class="preset-color" data-color="#000000" style="background:#000000" title="黑色"></div>
-          <div class="preset-color" data-color="#f5f0e8" style="background:#f5f0e8" title="米色"></div>
-          <div class="preset-color" data-color="#ffddd2" style="background:#ffddd2" title="浅粉"></div>
-          <div class="preset-color" data-color="#d2e3fc" style="background:#d2e3fc" title="浅蓝"></div>
+      <div class="color-picker-wrapper">
+        <div class="color-trigger" id="colorTrigger" style="background:#ffffff"></div>
+        <div class="color-panel" id="colorPanel">
+          <div class="sv-square" id="svSquare">
+            <canvas id="svCanvas"></canvas>
+            <div class="sv-cursor" id="svCursor" style="left:100%;top:0%"></div>
+          </div>
+          <div class="hue-track" id="hueTrack">
+            <div class="hue-thumb" id="hueThumb" style="left:0%"></div>
+          </div>
+          <div class="alpha-track" id="alphaTrack">
+            <div class="alpha-gradient" id="alphaGradient"></div>
+            <div class="alpha-thumb" id="alphaThumb" style="left:100%"></div>
+          </div>
+          <div class="color-bottom">
+            <input class="hex-input" id="hexInput" type="text" value="#ffffff" maxlength="9" spellcheck="false">
+            <div class="color-preview-box" id="colorPreviewBox" style="background:#ffffff"></div>
+          </div>
+          <div class="preset-row" id="presetRow"></div>
         </div>
       </div>
     </div>
 
     <div class="divider"></div>
 
+    <!-- Aspect Ratio -->
+    <div class="control-group">
+      <label>比例</label>
+      <div class="ratio-group" id="ratioGroup">
+        <button class="ratio-btn active" data-w="1" data-h="1">1:1</button>
+        <button class="ratio-btn" data-w="4" data-h="5">4:5</button>
+        <button class="ratio-btn" data-w="3" data-h="4">3:4</button>
+        <button class="ratio-btn" data-w="9" data-h="16">9:16</button>
+        <button class="ratio-btn" data-w="16" data-h="9">16:9</button>
+        <button class="ratio-btn" data-w="0" data-h="0">自定义</button>
+      </div>
+      <div class="ratio-custom-inputs" id="customRatioInputs">
+        <input type="number" id="customW" value="3" min="1" max="99">
+        <span>:</span>
+        <input type="number" id="customH" value="2" min="1" max="99">
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Format -->
     <div class="control-group">
       <label>格式</label>
       <div class="format-group">
@@ -527,26 +426,27 @@
 
     <div class="divider"></div>
 
-    <div class="control-group quality-group" id="qualityGroup">
+    <!-- Quality -->
+    <div class="control-group slider-group" id="qualityGroup">
       <label>质量</label>
       <input type="range" id="qualitySlider" min="60" max="100" value="95">
-      <span class="quality-val" id="qualityVal">95%</span>
+      <span class="slider-val" id="qualityVal">95%</span>
     </div>
 
     <div class="divider"></div>
 
-    <div class="control-group quality-group">
+    <!-- Padding -->
+    <div class="control-group slider-group">
       <label>内边距</label>
       <input type="range" id="paddingSlider" min="0" max="20" value="5">
-      <span class="quality-val" id="paddingVal">5%</span>
+      <span class="slider-val" id="paddingVal">5%</span>
     </div>
 
     <div class="spacer"></div>
-
     <button class="btn btn-secondary" id="clearAllBtn" style="display:none">清除全部</button>
   </div>
 
-  <!-- Upload Zone -->
+  <!-- Upload -->
   <div class="upload-zone" id="uploadZone">
     <input type="file" id="fileInput" accept="image/*" multiple>
     <div class="upload-icon">⊞</div>
@@ -561,331 +461,492 @@
       <div class="results-meta" id="resultsMeta"></div>
     </div>
     <div class="batch-actions">
-      <button class="btn btn-dark" id="downloadAllBtn">⬇ 批量下载 ZIP</button>
+      <button class="btn btn-dark" id="downloadAllBtn">⬇ 全部下载</button>
       <button class="btn btn-primary" id="addMoreBtn">+ 继续添加</button>
     </div>
     <div class="cards-grid" id="cardsGrid"></div>
   </div>
 </main>
 
-<footer>
-  方图工坊 · 所有处理均在浏览器本地完成 · 图片数据不会上传至任何服务器
-</footer>
+<footer>方图工坊 · 所有处理均在浏览器本地完成 · 图片数据不会上传至任何服务器</footer>
 
 <script>
-  // State
-  let currentColor = '#ffffff';
-  let currentFormat = 'jpeg';
-  let currentQuality = 0.95;
-  let currentPaddingRatio = 0.05;
-  let processedImages = [];
+// ═══════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════
+let currentColor = '#ffffff';
+let currentAlpha = 1;
+let currentFormat = 'jpeg';
+let currentQuality = 0.95;
+let currentPaddingRatio = 0.05;
+let currentRatioW = 1, currentRatioH = 1;
+let processedImages = [];
 
-  // DOM refs
-  const uploadZone = document.getElementById('uploadZone');
-  const fileInput = document.getElementById('fileInput');
-  const cardsGrid = document.getElementById('cardsGrid');
-  const resultsSection = document.getElementById('resultsSection');
-  const resultsMeta = document.getElementById('resultsMeta');
-  const clearAllBtn = document.getElementById('clearAllBtn');
-  const downloadAllBtn = document.getElementById('downloadAllBtn');
-  const addMoreBtn = document.getElementById('addMoreBtn');
-  const qualitySlider = document.getElementById('qualitySlider');
-  const qualityVal = document.getElementById('qualityVal');
-  const qualityGroup = document.getElementById('qualityGroup');
-  const customColorInput = document.getElementById('customColor');
-  const colorPickerTrigger = document.getElementById('colorPickerTrigger');
+// HSV state
+let hsv = { h: 0, s: 0, v: 1 };
 
-  // Color picker
-  colorPickerTrigger.addEventListener('click', () => customColorInput.click());
-  customColorInput.addEventListener('input', e => {
-    setColor(e.target.value);
-    document.querySelectorAll('.preset-color').forEach(p => p.classList.remove('active'));
-  });
+// ═══════════════════════════════════════
+//  HSV COLOR PICKER
+// ═══════════════════════════════════════
+const PRESETS = [
+  '#ffffff','#000000','#f5f0e8','#e8dcc8',
+  '#ffddd2','#ffb3c6','#d2e3fc','#b7e4c7',
+  '#ffe8a3','#d5b4f0','#c9ada7','#4a4e69'
+];
 
-  document.getElementById('presetColors').addEventListener('click', e => {
-    const p = e.target.closest('.preset-color');
-    if (!p) return;
-    document.querySelectorAll('.preset-color').forEach(x => x.classList.remove('active'));
-    p.classList.add('active');
-    setColor(p.dataset.color);
-  });
+const colorTrigger = document.getElementById('colorTrigger');
+const colorPanel   = document.getElementById('colorPanel');
+const svSquare     = document.getElementById('svSquare');
+const svCanvas     = document.getElementById('svCanvas');
+const svCursor     = document.getElementById('svCursor');
+const hueTrack     = document.getElementById('hueTrack');
+const hueThumb     = document.getElementById('hueThumb');
+const alphaTrack   = document.getElementById('alphaTrack');
+const alphaGradient= document.getElementById('alphaGradient');
+const alphaThumb   = document.getElementById('alphaThumb');
+const hexInput     = document.getElementById('hexInput');
+const colorPreviewBox = document.getElementById('colorPreviewBox');
+const presetRow    = document.getElementById('presetRow');
 
-  function setColor(c) {
-    currentColor = c;
-    colorPickerTrigger.style.background = c;
-    customColorInput.value = c;
+// Build preset swatches
+PRESETS.forEach(c => {
+  const s = document.createElement('div');
+  s.className = 'swatch';
+  s.style.background = c;
+  s.title = c;
+  s.addEventListener('click', () => applyHex(c));
+  presetRow.appendChild(s);
+});
+
+// Toggle panel
+colorTrigger.addEventListener('click', e => {
+  e.stopPropagation();
+  colorPanel.classList.toggle('open');
+});
+document.addEventListener('click', e => {
+  if (!colorPanel.contains(e.target) && e.target !== colorTrigger)
+    colorPanel.classList.remove('open');
+});
+
+function drawSV() {
+  const w = svCanvas.width = svSquare.clientWidth || 212;
+  const h = svCanvas.height = svSquare.clientHeight || 160;
+  const ctx = svCanvas.getContext('2d');
+  ctx.clearRect(0, 0, w, h);
+
+  const hueColor = `hsl(${hsv.h}, 100%, 50%)`;
+  const gradH = ctx.createLinearGradient(0, 0, w, 0);
+  gradH.addColorStop(0, '#fff');
+  gradH.addColorStop(1, hueColor);
+  ctx.fillStyle = gradH;
+  ctx.fillRect(0, 0, w, h);
+
+  const gradV = ctx.createLinearGradient(0, 0, 0, h);
+  gradV.addColorStop(0, 'rgba(0,0,0,0)');
+  gradV.addColorStop(1, '#000');
+  ctx.fillStyle = gradV;
+  ctx.fillRect(0, 0, w, h);
+
+  // cursor
+  svCursor.style.left = (hsv.s * 100) + '%';
+  svCursor.style.top  = ((1 - hsv.v) * 100) + '%';
+}
+
+function updateHueThumb() {
+  hueThumb.style.left = (hsv.h / 360 * 100) + '%';
+  hueThumb.style.background = `hsl(${hsv.h},100%,50%)`;
+}
+
+function updateAlpha() {
+  const rgb = hsvToRgb(hsv.h, hsv.s, hsv.v);
+  alphaGradient.style.background =
+    `linear-gradient(to right, rgba(${rgb.r},${rgb.g},${rgb.b},0), rgb(${rgb.r},${rgb.g},${rgb.b}))`;
+  alphaThumb.style.left = (currentAlpha * 100) + '%';
+  alphaThumb.style.background = rgbToHex(rgb.r, rgb.g, rgb.b);
+}
+
+function updateAll() {
+  drawSV();
+  updateHueThumb();
+  updateAlpha();
+  const rgb = hsvToRgb(hsv.h, hsv.s, hsv.v);
+  const hex = rgbToHex(rgb.r, rgb.g, rgb.b);
+  currentColor = hex;
+  colorTrigger.style.background = currentAlpha < 1
+    ? `rgba(${rgb.r},${rgb.g},${rgb.b},${currentAlpha})`
+    : hex;
+  hexInput.value = currentAlpha < 1
+    ? hex + Math.round(currentAlpha * 255).toString(16).padStart(2, '0')
+    : hex;
+  colorPreviewBox.style.background = colorTrigger.style.background;
+}
+
+// SV drag
+let svDragging = false;
+svSquare.addEventListener('mousedown', e => { svDragging = true; handleSV(e); });
+document.addEventListener('mousemove', e => { if (svDragging) handleSV(e); });
+document.addEventListener('mouseup', () => svDragging = false);
+svSquare.addEventListener('touchstart', e => { svDragging = true; handleSV(e.touches[0]); }, {passive:true});
+document.addEventListener('touchmove', e => { if (svDragging) handleSV(e.touches[0]); }, {passive:true});
+document.addEventListener('touchend', () => svDragging = false);
+
+function handleSV(e) {
+  const rect = svSquare.getBoundingClientRect();
+  hsv.s = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  hsv.v = Math.max(0, Math.min(1, 1 - (e.clientY - rect.top) / rect.height));
+  updateAll();
+}
+
+// Hue drag
+let hueDragging = false;
+hueTrack.addEventListener('mousedown', e => { hueDragging = true; handleHue(e); });
+document.addEventListener('mousemove', e => { if (hueDragging) handleHue(e); });
+document.addEventListener('mouseup', () => hueDragging = false);
+hueTrack.addEventListener('touchstart', e => { hueDragging = true; handleHue(e.touches[0]); }, {passive:true});
+document.addEventListener('touchmove', e => { if (hueDragging) handleHue(e.touches[0]); }, {passive:true});
+
+function handleHue(e) {
+  const rect = hueTrack.getBoundingClientRect();
+  hsv.h = Math.max(0, Math.min(360, (e.clientX - rect.left) / rect.width * 360));
+  updateAll();
+}
+
+// Alpha drag
+let alphaDragging = false;
+alphaTrack.addEventListener('mousedown', e => { alphaDragging = true; handleAlpha(e); });
+document.addEventListener('mousemove', e => { if (alphaDragging) handleAlpha(e); });
+document.addEventListener('mouseup', () => alphaDragging = false);
+alphaTrack.addEventListener('touchstart', e => { alphaDragging = true; handleAlpha(e.touches[0]); }, {passive:true});
+document.addEventListener('touchmove', e => { if (alphaDragging) handleAlpha(e.touches[0]); }, {passive:true});
+
+function handleAlpha(e) {
+  const rect = alphaTrack.getBoundingClientRect();
+  currentAlpha = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  updateAll();
+}
+
+// Hex input
+hexInput.addEventListener('change', () => applyHex(hexInput.value.trim()));
+
+function applyHex(raw) {
+  let h = raw.startsWith('#') ? raw : '#' + raw;
+  // parse alpha from 8-digit hex
+  if (/^#[0-9a-fA-F]{8}$/.test(h)) {
+    currentAlpha = parseInt(h.slice(7, 9), 16) / 255;
+    h = h.slice(0, 7);
+  } else {
+    currentAlpha = 1;
   }
+  if (!/^#[0-9a-fA-F]{6}$/.test(h)) return;
+  const r = parseInt(h.slice(1,3),16);
+  const g = parseInt(h.slice(3,5),16);
+  const b = parseInt(h.slice(5,7),16);
+  const h2 = rgbToHsv(r, g, b);
+  hsv = h2;
+  updateAll();
+}
 
-  // Format buttons
-  document.querySelectorAll('.format-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.format-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      currentFormat = btn.dataset.fmt;
-      qualityGroup.style.opacity = currentFormat === 'png' ? '0.4' : '1';
-      qualityGroup.style.pointerEvents = currentFormat === 'png' ? 'none' : '';
-    });
-  });
+// Color math
+function hsvToRgb(h, s, v) {
+  let r, g, b;
+  const i = Math.floor(h / 60) % 6;
+  const f = h / 60 - Math.floor(h / 60);
+  const p = v * (1 - s), q = v * (1 - f * s), t = v * (1 - (1 - f) * s);
+  if (i===0){r=v;g=t;b=p;} else if(i===1){r=q;g=v;b=p;}
+  else if(i===2){r=p;g=v;b=t;} else if(i===3){r=p;g=q;b=v;}
+  else if(i===4){r=t;g=p;b=v;} else{r=v;g=p;b=q;}
+  return { r: Math.round(r*255), g: Math.round(g*255), b: Math.round(b*255) };
+}
 
-  // Quality slider
-  qualitySlider.addEventListener('input', e => {
-    currentQuality = e.target.value / 100;
-    qualityVal.textContent = e.target.value + '%';
-  });
-
-  document.getElementById('paddingSlider').addEventListener('input', e => {
-    currentPaddingRatio = e.target.value / 100;
-    document.getElementById('paddingVal').textContent = e.target.value + '%';
-  });
-
-  // Upload zone
-  uploadZone.addEventListener('click', () => fileInput.click());
-  fileInput.addEventListener('change', e => handleFiles(e.target.files));
-
-  uploadZone.addEventListener('dragover', e => {
-    e.preventDefault();
-    uploadZone.classList.add('dragover');
-  });
-  uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
-  uploadZone.addEventListener('drop', e => {
-    e.preventDefault();
-    uploadZone.classList.remove('dragover');
-    handleFiles(e.dataTransfer.files);
-  });
-
-  addMoreBtn.addEventListener('click', () => fileInput.click());
-  clearAllBtn.addEventListener('click', clearAll);
-  downloadAllBtn.addEventListener('click', downloadAll);
-
-  function handleFiles(files) {
-    const imageFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
-    if (!imageFiles.length) return;
-    imageFiles.forEach((f, i) => {
-      setTimeout(() => processImage(f), i * 80);
-    });
+function rgbToHsv(r, g, b) {
+  r/=255; g/=255; b/=255;
+  const max=Math.max(r,g,b), min=Math.min(r,g,b), d=max-min;
+  let h=0, s=max===0?0:d/max, v=max;
+  if(d!==0){
+    if(max===r) h=((g-b)/d+6)%6;
+    else if(max===g) h=(b-r)/d+2;
+    else h=(r-g)/d+4;
+    h*=60;
   }
+  return {h, s, v};
+}
 
-  function processImage(file) {
-    const reader = new FileReader();
-    reader.onload = e => {
-      const img = new Image();
-      img.onload = () => {
-        const { canvas, size } = makeSquare(img, currentColor, currentFormat, currentQuality, currentPaddingRatio);
-        const ext = currentFormat === 'png' ? 'png' : 'jpg';
-        const baseName = file.name.replace(/\.[^/.]+$/, '');
-        const outName = `${baseName}_square.${ext}`;
-        const dataUrl = canvas.toDataURL(`image/${currentFormat}`, currentQuality);
+function rgbToHex(r,g,b){
+  return '#'+[r,g,b].map(x=>x.toString(16).padStart(2,'0')).join('');
+}
 
-        const entry = {
-          id: Date.now() + Math.random(),
-          name: outName,
-          origName: file.name,
-          origW: img.naturalWidth,
-          origH: img.naturalHeight,
-          squareSize: size,
-          dataUrl,
-          canvas,
-          format: currentFormat,
-          quality: currentQuality,
-        };
-        processedImages.push(entry);
-        renderCard(entry, img);
-        updateResultsUI();
+// Init
+updateAll();
+setTimeout(drawSV, 50);
+window.addEventListener('resize', drawSV);
+
+// ═══════════════════════════════════════
+//  RATIO SELECTOR
+// ═══════════════════════════════════════
+document.getElementById('ratioGroup').addEventListener('click', e => {
+  const btn = e.target.closest('.ratio-btn');
+  if (!btn) return;
+  document.querySelectorAll('.ratio-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const w = +btn.dataset.w, h = +btn.dataset.h;
+  const customInputs = document.getElementById('customRatioInputs');
+  if (w === 0) {
+    customInputs.classList.add('visible');
+    currentRatioW = +document.getElementById('customW').value || 1;
+    currentRatioH = +document.getElementById('customH').value || 1;
+  } else {
+    customInputs.classList.remove('visible');
+    currentRatioW = w; currentRatioH = h;
+  }
+});
+document.getElementById('customW').addEventListener('input', e => {
+  currentRatioW = Math.max(1, +e.target.value || 1);
+});
+document.getElementById('customH').addEventListener('input', e => {
+  currentRatioH = Math.max(1, +e.target.value || 1);
+});
+
+// ═══════════════════════════════════════
+//  FORMAT / QUALITY / PADDING
+// ═══════════════════════════════════════
+const qualityGroup  = document.getElementById('qualityGroup');
+const qualitySlider = document.getElementById('qualitySlider');
+const qualityVal    = document.getElementById('qualityVal');
+
+document.querySelectorAll('.format-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.format-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentFormat = btn.dataset.fmt;
+    qualityGroup.style.opacity = currentFormat === 'png' ? '0.4' : '1';
+    qualityGroup.style.pointerEvents = currentFormat === 'png' ? 'none' : '';
+  });
+});
+
+qualitySlider.addEventListener('input', e => {
+  currentQuality = e.target.value / 100;
+  qualityVal.textContent = e.target.value + '%';
+});
+
+document.getElementById('paddingSlider').addEventListener('input', e => {
+  currentPaddingRatio = e.target.value / 100;
+  document.getElementById('paddingVal').textContent = e.target.value + '%';
+});
+
+// ═══════════════════════════════════════
+//  UPLOAD
+// ═══════════════════════════════════════
+const uploadZone    = document.getElementById('uploadZone');
+const fileInput     = document.getElementById('fileInput');
+const cardsGrid     = document.getElementById('cardsGrid');
+const resultsSection= document.getElementById('resultsSection');
+const resultsMeta   = document.getElementById('resultsMeta');
+const clearAllBtn   = document.getElementById('clearAllBtn');
+const downloadAllBtn= document.getElementById('downloadAllBtn');
+const addMoreBtn    = document.getElementById('addMoreBtn');
+
+uploadZone.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', e => { handleFiles(e.target.files); fileInput.value=''; });
+
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault(); uploadZone.classList.remove('dragover');
+  handleFiles(e.dataTransfer.files);
+});
+
+addMoreBtn.addEventListener('click', () => fileInput.click());
+clearAllBtn.addEventListener('click', clearAll);
+downloadAllBtn.addEventListener('click', downloadAll);
+
+function handleFiles(files) {
+  const imgs = Array.from(files).filter(f => f.type.startsWith('image/'));
+  imgs.forEach((f, i) => setTimeout(() => processImage(f), i * 80));
+}
+
+function processImage(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const snapColor = currentColor;
+      const snapAlpha = currentAlpha;
+      const snapFormat = currentFormat;
+      const snapQuality = currentQuality;
+      const snapPadding = currentPaddingRatio;
+      const snapRW = currentRatioW;
+      const snapRH = currentRatioH;
+
+      const { canvas, outW, outH } = makeCanvas(img, snapColor, snapAlpha, snapPadding, snapRW, snapRH);
+      const ext = snapFormat === 'png' ? 'png' : 'jpg';
+      const baseName = file.name.replace(/\.[^/.]+$/, '');
+      const outName = `${baseName}_border.${ext}`;
+      const dataUrl = canvas.toDataURL(`image/${snapFormat}`, snapQuality);
+
+      const entry = {
+        id: String(Date.now()) + String(Math.random()),
+        name: outName,
+        origW: img.naturalWidth, origH: img.naturalHeight,
+        outW, outH, dataUrl, canvas,
+        format: snapFormat, quality: snapQuality,
       };
-      img.src = e.target.result;
+      processedImages.push(entry);
+      renderCard(entry, img);
+      updateResultsUI();
     };
-    reader.readAsDataURL(file);
-  }
-
-  function makeSquare(img, bgColor, fmt, quality, paddingRatio) {
-    const w = img.naturalWidth;
-    const h = img.naturalHeight;
-    const longEdge = Math.max(w, h);
-    const padding = Math.round(longEdge * paddingRatio);
-    const size = longEdge + padding * 2;
-
-    const canvas = document.createElement('canvas');
-    canvas.width = size;
-    canvas.height = size;
-    const ctx = canvas.getContext('2d');
-
-    ctx.fillStyle = bgColor;
-    ctx.fillRect(0, 0, size, size);
-
-    const x = Math.floor((size - w) / 2);
-    const y = Math.floor((size - h) / 2);
-    ctx.drawImage(img, x, y);
-
-    return { canvas, size };
-  }
-
-  function renderCard(entry, origImg) {
-    const card = document.createElement('div');
-    card.className = 'image-card';
-    card.dataset.id = entry.id;
-
-    // Preview canvases
-    const origThumb = document.createElement('img');
-    origThumb.src = origImg.src;
-    origThumb.style.cssText = 'max-width:100%;max-height:160px;object-fit:contain;display:block;';
-
-    const squareThumb = document.createElement('img');
-    squareThumb.src = entry.dataUrl;
-    squareThumb.style.cssText = 'max-width:100%;max-height:160px;object-fit:contain;display:block;';
-
-    card.innerHTML = `
-      <div class="card-preview">
-        <div class="preview-pane" id="orig-${entry.id}"></div>
-        <div class="preview-pane" id="sq-${entry.id}"></div>
-      </div>
-      <div class="card-info">
-        <div class="card-name" title="${entry.outName}">${entry.name}</div>
-        <div class="card-meta">
-          <span class="meta-tag">${entry.origW}×${entry.origH}</span>
-          <span>→</span>
-          <span class="meta-tag new">${entry.squareSize}×${entry.squareSize}</span>
-        </div>
-        <div class="card-actions">
-          <button class="card-btn dl" onclick="downloadSingle('${entry.id}')">下载</button>
-          <button class="card-btn" onclick="removeCard('${entry.id}')">移除</button>
-        </div>
-      </div>
-    `;
-
-    cardsGrid.appendChild(card);
-    document.getElementById(`orig-${entry.id}`).appendChild(origThumb);
-    document.getElementById(`sq-${entry.id}`).appendChild(squareThumb);
-  }
-
-  function updateResultsUI() {
-    if (processedImages.length > 0) {
-      resultsSection.style.display = 'block';
-      clearAllBtn.style.display = 'block';
-      resultsMeta.textContent = `共 ${processedImages.length} 张`;
-    } else {
-      resultsSection.style.display = 'none';
-      clearAllBtn.style.display = 'none';
-    }
-  }
-
-  window.downloadSingle = function(id) {
-    const entry = processedImages.find(e => String(e.id) === String(id));
-    if (!entry) return;
-    const mimeType = `image/${entry.format || currentFormat}`;
-    const quality = entry.quality !== undefined ? entry.quality : currentQuality;
-    entry.canvas.toBlob(blob => {
-      if (!blob) { alert('下载失败，请重试'); return; }
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = entry.name;
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 300);
-    }, mimeType, quality);
+    img.src = e.target.result;
   };
+  reader.readAsDataURL(file);
+}
 
-  window.removeCard = function(id) {
-    processedImages = processedImages.filter(e => String(e.id) !== String(id));
-    const card = cardsGrid.querySelector(`[data-id="${id}"]`);
-    if (card) {
-      card.style.animation = 'cardOut 0.25s ease forwards';
-      card.style.cssText += ';animation:cardOut 0.25s ease forwards;';
-      setTimeout(() => card.remove(), 250);
-    }
-    updateResultsUI();
-  };
+// ═══════════════════════════════════════
+//  CANVAS LOGIC
+// ═══════════════════════════════════════
+function makeCanvas(img, color, alpha, paddingRatio, rw, rh) {
+  const iw = img.naturalWidth, ih = img.naturalHeight;
+  const targetAspect = rw / rh;
+  const imgAspect = iw / ih;
 
-  function clearAll() {
-    processedImages = [];
-    cardsGrid.innerHTML = '';
-    fileInput.value = '';
-    updateResultsUI();
+  // Start: fit image into target aspect with padding
+  let baseW, baseH;
+  if (imgAspect >= targetAspect) {
+    // image is wider → constrained by width
+    baseW = iw;
+    baseH = Math.round(iw / targetAspect);
+  } else {
+    // image is taller → constrained by height
+    baseH = ih;
+    baseW = Math.round(ih * targetAspect);
   }
 
-  async function downloadAll() {
-    if (!processedImages.length) return;
-    if (processedImages.length === 1) {
-      downloadSingle(processedImages[0].id);
-      return;
-    }
-    downloadAllBtn.textContent = '⏳ 打包中...';
-    downloadAllBtn.disabled = true;
-    try {
-      const zip = new JSZip();
-      const nameCount = {};
+  // add padding on all sides based on the longer dimension
+  const longEdge = Math.max(baseW, baseH);
+  const pad = Math.round(longEdge * paddingRatio);
 
-      const toBlob = (canvas, mime, quality) => new Promise(resolve =>
-        canvas.toBlob(blob => resolve(blob), mime, quality)
-      );
+  const outW = baseW + pad * 2;
+  const outH = baseH + pad * 2;
 
-      for (const entry of processedImages) {
-        let name = entry.name;
-        nameCount[name] = (nameCount[name] || 0) + 1;
-        if (nameCount[name] > 1) {
-          const ext = name.split('.').pop();
-          name = name.replace(`.${ext}`, `_${nameCount[name]}.${ext}`);
-        }
-        const mime = `image/${entry.format || 'jpeg'}`;
-        const quality = entry.quality !== undefined ? entry.quality : 0.95;
-        const blob = await toBlob(entry.canvas, mime, quality);
-        if (blob) zip.file(name, blob);
-      }
+  const canvas = document.createElement('canvas');
+  canvas.width = outW; canvas.height = outH;
+  const ctx = canvas.getContext('2d');
 
-      const zipBlob = await zip.generateAsync({ type: 'blob' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(zipBlob);
-      a.download = `square_images_${Date.now()}.zip`;
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(a.href); }, 300);
-    } catch (err) {
-      alert('打包失败：' + err.message);
-    }
-    downloadAllBtn.textContent = '⬇ 批量下载 ZIP';
-    downloadAllBtn.disabled = false;
+  // fill bg
+  const rgb = hexToRgb(color);
+  ctx.fillStyle = `rgba(${rgb.r},${rgb.g},${rgb.b},${alpha})`;
+  ctx.fillRect(0, 0, outW, outH);
+
+  // center image
+  const x = Math.floor((outW - iw) / 2);
+  const y = Math.floor((outH - ih) / 2);
+  ctx.drawImage(img, x, y);
+
+  return { canvas, outW, outH };
+}
+
+function hexToRgb(hex) {
+  const r = parseInt(hex.slice(1,3),16)||255;
+  const g = parseInt(hex.slice(3,5),16)||255;
+  const b = parseInt(hex.slice(5,7),16)||255;
+  return {r,g,b};
+}
+
+// ═══════════════════════════════════════
+//  RENDER CARD
+// ═══════════════════════════════════════
+function renderCard(entry, origImg) {
+  const card = document.createElement('div');
+  card.className = 'image-card'; card.dataset.id = entry.id;
+
+  const origThumb = document.createElement('img');
+  origThumb.src = origImg.src;
+
+  const outThumb = document.createElement('img');
+  outThumb.src = entry.dataUrl;
+
+  card.innerHTML = `
+    <div class="card-preview">
+      <div class="preview-pane" id="orig-${entry.id}"></div>
+      <div class="preview-pane" id="out-${entry.id}"></div>
+    </div>
+    <div class="card-info">
+      <div class="card-name">${entry.name}</div>
+      <div class="card-meta">
+        <span class="meta-tag">${entry.origW}×${entry.origH}</span>
+        <span>→</span>
+        <span class="meta-tag new">${entry.outW}×${entry.outH}</span>
+      </div>
+      <div class="card-actions">
+        <button class="card-btn dl" onclick="downloadSingle('${entry.id}')">下载</button>
+        <button class="card-btn" onclick="removeCard('${entry.id}')">移除</button>
+      </div>
+    </div>`;
+
+  cardsGrid.appendChild(card);
+  document.getElementById(`orig-${entry.id}`).appendChild(origThumb);
+  document.getElementById(`out-${entry.id}`).appendChild(outThumb);
+}
+
+function updateResultsUI() {
+  const has = processedImages.length > 0;
+  resultsSection.style.display = has ? 'block' : 'none';
+  clearAllBtn.style.display = has ? 'block' : 'none';
+  resultsMeta.textContent = has ? `共 ${processedImages.length} 张` : '';
+}
+
+// ═══════════════════════════════════════
+//  DOWNLOAD — individual, no ZIP
+// ═══════════════════════════════════════
+function triggerDownload(blob, name) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 300);
+}
+
+window.downloadSingle = function(id) {
+  const entry = processedImages.find(e => e.id === id);
+  if (!entry) return;
+  entry.canvas.toBlob(blob => {
+    if (!blob) { alert('下载失败，请重试'); return; }
+    triggerDownload(blob, entry.name);
+  }, `image/${entry.format}`, entry.quality);
+};
+
+async function downloadAll() {
+  if (!processedImages.length) return;
+  downloadAllBtn.textContent = '⏳ 下载中...';
+  downloadAllBtn.disabled = true;
+
+  for (let i = 0; i < processedImages.length; i++) {
+    const entry = processedImages[i];
+    await new Promise(resolve => {
+      entry.canvas.toBlob(blob => {
+        if (blob) triggerDownload(blob, entry.name);
+        // stagger each download slightly so browser doesn't block them
+        setTimeout(resolve, 300);
+      }, `image/${entry.format}`, entry.quality);
+    });
   }
 
-  // cardOut animation
-  const style = document.createElement('style');
-  style.textContent = '@keyframes cardOut { to { opacity: 0; transform: scale(0.95); } }';
-  document.head.appendChild(style);
+  downloadAllBtn.textContent = '⬇ 全部下载';
+  downloadAllBtn.disabled = false;
+}
+
+window.removeCard = function(id) {
+  processedImages = processedImages.filter(e => e.id !== id);
+  const card = cardsGrid.querySelector(`[data-id="${id}"]`);
+  if (card) {
+    card.style.cssText += ';animation:cardOut 0.25s ease forwards;';
+    setTimeout(() => card.remove(), 250);
+  }
+  updateResultsUI();
+};
+
+function clearAll() {
+  processedImages = []; cardsGrid.innerHTML = '';
+  updateResultsUI();
+}
 </script>
 </body>
 </html>
-
-<!--
-==========================================================
-  部署到 GitHub Pages（免费，永久可访问，可分享给任何人）
-==========================================================
-
-第一步：注册 GitHub 账号
-  → https://github.com （免费）
-
-第二步：新建仓库
-  1. 点击右上角 "+" → "New repository"
-  2. Repository name 填写：square-image-tool（或任意名称）
-  3. 选择 Public（公开）
-  4. 点击 "Create repository"
-
-第三步：上传文件
-  1. 进入刚创建的仓库
-  2. 点击 "Add file" → "Upload files"
-  3. 把 square-image-tool.html 拖进去
-  4. 重要：将文件重命名为 index.html（上传后可在仓库内重命名）
-  5. 点击 "Commit changes"
-
-第四步：开启 GitHub Pages
-  1. 进入仓库 → 点击顶部 "Settings"
-  2. 左侧菜单找到 "Pages"
-  3. Source 选择 "Deploy from a branch"
-  4. Branch 选择 "main"，文件夹选 "/ (root)"
-  5. 点击 "Save"
-
-第五步：获取链接
-  等待约 1-2 分钟后，页面顶部会出现：
-  "Your site is live at https://你的用户名.github.io/square-image-tool/"
-  
-  这个链接就可以直接分享给任何人使用！
-==========================================================
--->
